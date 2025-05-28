@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'result_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
-  const LoadingScreen({super.key});
+  final String capturedImagePath;
+  
+  const LoadingScreen({
+    super.key,
+    required this.capturedImagePath,
+  });
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -15,7 +20,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const ResultScreen()),
+          MaterialPageRoute(
+            builder: (context) => ResultScreen(
+              capturedImagePath: widget.capturedImagePath,
+            ),
+          ),
         );
       }
     });

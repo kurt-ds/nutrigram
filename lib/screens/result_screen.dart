@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../components/custom_app_bar.dart';
 
 class ResultScreen extends StatefulWidget {
-  const ResultScreen({super.key});
+  final String capturedImagePath;
+  
+  const ResultScreen({
+    super.key,
+    required this.capturedImagePath,
+  });
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -67,8 +73,8 @@ class _ResultScreenState extends State<ResultScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/preview_placeholder.jpg',
+                      child: Image.file(
+                        File(widget.capturedImagePath),
                         width: 120,
                         height: 120,
                         fit: BoxFit.cover,

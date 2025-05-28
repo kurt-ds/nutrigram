@@ -119,7 +119,7 @@ class DashboardScreen extends StatelessWidget {
                         textBaseline: TextBaseline.alphabetic,
                         children: const [
                           Text(
-                            "1330",
+                            "0",
                             style: TextStyle(
                                 fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green),
                           ),
@@ -140,16 +140,16 @@ class DashboardScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
-                          Text("P 62g", style: TextStyle(color: Colors.blue)),
-                          Text("C 138g", style: TextStyle(color: Colors.orange)),
-                          Text("F 38g", style: TextStyle(color: Colors.pink)),
+                          Text("P 0g", style: TextStyle(color: Colors.blue)),
+                          Text("C 0g", style: TextStyle(color: Colors.orange)),
+                          Text("F 0g", style: TextStyle(color: Colors.pink)),
                         ],
                       )
                     ],
                   ),
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
-                    value: 1330 / 2000,
+                    value: 0 / 2500,
                     backgroundColor: Colors.grey.shade300,
                     color: Colors.green,
                   ),
@@ -162,7 +162,6 @@ class DashboardScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: const [
                 Text("Recent Meals", style: TextStyle(fontWeight: FontWeight.bold)),
-                Text("See All", style: TextStyle(color: Colors.green)),
               ],
             ),
             const SizedBox(height: 8),
@@ -195,9 +194,9 @@ class DashboardScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: const [
-                      MacroItem(label: "Protein", percent: 21, color: Colors.blue),
-                      MacroItem(label: "Carbs", percent: 65, color: Colors.orange),
-                      MacroItem(label: "Fat", percent: 14, color: Colors.pink),
+                      MacroItem(label: "Protein", percent: 0, color: Colors.blue),
+                      MacroItem(label: "Carbs", percent: 0, color: Colors.orange),
+                      MacroItem(label: "Fat", percent: 0, color: Colors.pink),
                     ],
                   )
                 ],
