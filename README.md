@@ -17,6 +17,7 @@ A modern nutrition tracking app built with Flutter that helps users monitor thei
 - Flutter SDK (latest version)
 - Dart SDK (latest version)
 - Android Studio / VS Code with Flutter extensions
+- Gemini API key from Google AI Studio
 
 ### Installation
 
@@ -30,14 +31,24 @@ git clone https://github.com/yourusername/nutrigram.git
 cd nutrigram
 ```
 
-3. Install dependencies:
+3. Set up API configuration:
+   - Copy `lib/config/api_config.template.dart` to `lib/config/api_config.dart`
+   - Replace `YOUR_API_KEY_HERE` with your actual Gemini API key
+   - Note: `api_config.dart` is gitignored and won't be committed to the repository
+
+4. Install dependencies:
 ```bash
 flutter pub get
 ```
 
-4. Run the app:
+5. Run the app:
 ```bash
 flutter run
+```
+
+Alternatively, you can provide the API key during runtime:
+```bash
+flutter run --dart-define=GEMINI_API_KEY=your_api_key_here
 ```
 
 ## Project Structure

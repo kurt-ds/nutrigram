@@ -4,10 +4,12 @@ import '../components/custom_app_bar.dart';
 
 class ResultScreen extends StatefulWidget {
   final String capturedImagePath;
+  final String analysisResult;
   
   const ResultScreen({
     super.key,
     required this.capturedImagePath,
+    required this.analysisResult,
   });
 
   @override
@@ -249,21 +251,8 @@ class _ResultScreenState extends State<ResultScreen> {
                 icon: const Icon(Icons.check_circle_outline, color: Colors.white),
                 label: const Text('Save Meal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
                 onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  // TODO: Implement save functionality
                 },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'Report a mistake',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
               ),
             ),
           ],
@@ -276,8 +265,8 @@ class _ResultScreenState extends State<ResultScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+        const SizedBox(height: 4),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
       ],
     );

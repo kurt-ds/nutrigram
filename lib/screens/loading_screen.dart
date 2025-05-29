@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'result_screen.dart';
+import '../services/gemini_service.dart';
 
 class LoadingScreen extends StatefulWidget {
   final String capturedImagePath;
@@ -14,20 +15,42 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
+  final GeminiService _geminiService = GeminiService();
+  String _analysisResult = '';
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
+    _analyzeImage();
+  }
+
+  Future<void> _analyzeImage() async {
+    try {
+      final result = await _geminiService.analyzeFoodImage(widget.capturedImagePath);
       if (mounted) {
+        setState(() {
+          _analysisResult = result;
+        });
+        print('Analysis Result: $result'); // For debugging
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => ResultScreen(
               capturedImagePath: widget.capturedImagePath,
+              analysisResult: result,
             ),
           ),
         );
       }
-    });
+    } catch (e) {
+      print('Error in _analyzeImage: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error analyzing image. Please try again.'),
+          ),
+        );
+      }
+    }
   }
 
   @override

@@ -81,3 +81,6 @@ app.*.map.json
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+
+# API Keys and sensitive data
+lib/config/api_config.dart
