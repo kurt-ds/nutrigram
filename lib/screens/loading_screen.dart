@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'result_screen.dart';
 import '../services/gemini_service.dart';
+import '../services/nutritionix_service.dart';
+import 'dart:convert';
 
 class LoadingScreen extends StatefulWidget {
   final String capturedImagePath;
@@ -16,6 +18,7 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> {
   final GeminiService _geminiService = GeminiService();
+  final NutritionixService _nutritionixService = NutritionixService();
   String _analysisResult = '';
 
   @override
@@ -31,7 +34,15 @@ class _LoadingScreenState extends State<LoadingScreen> {
         setState(() {
           _analysisResult = result;
         });
-        print('Analysis Result: $result'); // For debugging
+        
+        // Get nutritional information from Nutritionix
+        try {
+          final nutritionalInfo = await _nutritionixService.analyzeFoodDescription(result);
+          print('Nutritional Information:');
+        } catch (e) {
+          print('Error getting nutritional information: $e');
+        }
+
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => ResultScreen(

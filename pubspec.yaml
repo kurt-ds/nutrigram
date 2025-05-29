@@ -39,6 +39,8 @@ dependencies:
   google_generative_ai: ^0.2.0
   path_provider: ^2.1.2
   http: ^1.2.0
+  crypto: ^3.0.3
+  xml: ^6.2.0
 
 dev_dependencies:
   flutter_test:
