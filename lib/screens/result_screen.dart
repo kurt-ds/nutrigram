@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../components/custom_app_bar.dart';
+import '../utils/logger.dart';
 
 class ResultScreen extends StatefulWidget {
   final String capturedImagePath;
@@ -17,6 +18,10 @@ class ResultScreen extends StatefulWidget {
 }
 
 class _ResultScreenState extends State<ResultScreen> {
+  ImageProvider? _imageProvider;
+  bool _isDisposed = false;
+  File? _imageFile;
+
   List<Map<String, dynamic>> foods = [
     {
       'name': 'Boiled Egg',
@@ -42,6 +47,50 @@ class _ResultScreenState extends State<ResultScreen> {
   ];
 
   double get totalKcal => foods.fold(0, (sum, item) => sum + item['kcal'] * item['servings']);
+
+  @override
+  void initState() {
+    super.initState();
+    Logger.info('Initializing ResultScreen');
+    _initializeImage();
+  }
+
+  void _initializeImage() {
+    if (widget.capturedImagePath.isNotEmpty) {
+      _imageFile = File(widget.capturedImagePath);
+      _imageProvider = FileImage(_imageFile!);
+      Logger.image('Image initialized: ${widget.capturedImagePath}');
+    }
+  }
+
+  @override
+  void dispose() {
+    Logger.info('Disposing ResultScreen');
+    _isDisposed = true;
+    // Clear image cache
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    
+    // Close the image file
+    if (_imageFile != null) {
+      try {
+        _imageFile!.deleteSync();
+        Logger.image('Deleted image file: ${_imageFile!.path}');
+      } catch (e) {
+        Logger.error('Error deleting image file', error: e);
+      }
+    }
+    
+    super.dispose();
+  }
+
+  void _saveMeal() {
+    Logger.info('Saving meal');
+    // TODO: Implement save functionality
+    
+    // Navigate back to main page
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,12 +124,27 @@ class _ResultScreenState extends State<ResultScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        File(widget.capturedImagePath),
-                        width: 120,
-                        height: 120,
-                        fit: BoxFit.cover,
-                      ),
+                      child: _imageProvider != null
+                          ? Image(
+                              image: _imageProvider!,
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  width: 120,
+                                  height: 120,
+                                  color: Colors.grey[300],
+                                  child: const Icon(Icons.error_outline, color: Colors.grey),
+                                );
+                              },
+                            )
+                          : Container(
+                              width: 120,
+                              height: 120,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.error_outline, color: Colors.grey),
+                            ),
                     ),
                     const SizedBox(height: 8),
                     Text('Photo detected', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
@@ -250,9 +314,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
                 icon: const Icon(Icons.check_circle_outline, color: Colors.white),
                 label: const Text('Save Meal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                onPressed: () {
-                  // TODO: Implement save functionality
-                },
+                onPressed: _saveMeal,
               ),
             ),
           ],

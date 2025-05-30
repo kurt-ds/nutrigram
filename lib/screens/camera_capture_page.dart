@@ -3,6 +3,7 @@ import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../components/custom_app_bar.dart';
+import '../utils/logger.dart';
 import 'loading_screen.dart';
 import 'result_screen.dart';
 
@@ -20,6 +21,8 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
   bool _isFlashOn = false;
   int _selectedCameraIndex = 0;
   final ImagePicker _picker = ImagePicker();
+  bool _isDisposed = false;
+  File? _lastCapturedImage;
 
   @override
   void initState() {
@@ -27,39 +30,88 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
     _initializeCamera();
   }
 
+  Future<void> _disposeCamera() async {
+    if (_controller != null) {
+      Logger.camera('Disposing camera controller');
+      await _controller!.dispose();
+      _controller = null;
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    Logger.info('Disposing CameraCapturePage');
+    _isDisposed = true;
+    _disposeCamera();
+    // Clear image cache
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    
+    // Clean up any captured images
+    if (_lastCapturedImage != null) {
+      try {
+        _lastCapturedImage!.deleteSync();
+        Logger.image('Deleted captured image: ${_lastCapturedImage!.path}');
+      } catch (e) {
+        Logger.error('Error deleting captured image', error: e);
+      }
+    }
+    
+    super.dispose();
+  }
+
   Future<void> _initializeCamera() async {
+    if (_isDisposed) return;
+    
     try {
+      Logger.camera('Initializing camera');
+      // Dispose existing controller if any
+      await _disposeCamera();
+      
       cameras = await availableCameras();
-      if (cameras.isEmpty) {
+      if (cameras.isEmpty || _isDisposed) {
+        Logger.warning('No cameras available or screen disposed');
         return;
       }
       
       _controller = CameraController(
         cameras[_selectedCameraIndex],
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
       );
 
       await _controller!.initialize();
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _isCameraInitialized = true;
         });
+        Logger.camera('Camera initialized successfully');
       }
     } catch (e) {
-      print('Error initializing camera: $e');
+      Logger.error('Error initializing camera', error: e);
     }
   }
 
   Future<void> _captureImage() async {
-    if (_controller == null || !_isCameraInitialized) return;
+    if (_controller == null || !_isCameraInitialized || _isDisposed) return;
 
     try {
+      Logger.camera('Capturing image');
       // Capture the image
       final XFile image = await _controller!.takePicture();
+      _lastCapturedImage = File(image.path);
+      Logger.image('Image captured: ${image.path}');
+      
+      // Dispose camera before navigating
+      await _disposeCamera();
       
       // Show loading screen with the captured image path
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -70,43 +122,55 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
         );
       }
     } catch (e) {
-      print('Error capturing image: $e');
+      Logger.error('Error capturing image', error: e);
     }
   }
 
   Future<void> _toggleFlash() async {
-    if (_controller == null || !_isCameraInitialized) return;
+    if (_controller == null || !_isCameraInitialized || _isDisposed) return;
     
     try {
       if (_isFlashOn) {
         await _controller!.setFlashMode(FlashMode.off);
+        Logger.camera('Flash turned off');
       } else {
         await _controller!.setFlashMode(FlashMode.torch);
+        Logger.camera('Flash turned on');
       }
-      setState(() {
-        _isFlashOn = !_isFlashOn;
-      });
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isFlashOn = !_isFlashOn;
+        });
+      }
     } catch (e) {
-      print('Error toggling flash: $e');
+      Logger.error('Error toggling flash', error: e);
     }
   }
 
   Future<void> _switchCamera() async {
-    if (cameras.length < 2) return;
+    if (cameras.length < 2 || _isDisposed) return;
     
+    Logger.camera('Switching camera');
     setState(() {
       _isCameraInitialized = false;
     });
     
     _selectedCameraIndex = (_selectedCameraIndex + 1) % cameras.length;
-    await _controller?.dispose();
     await _initializeCamera();
   }
 
   Future<void> _openGallery() async {
+    if (_isDisposed) return;
+    
     try {
+      Logger.info('Opening gallery');
+      // Dispose camera before opening gallery
+      await _disposeCamera();
+      
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
+      if (image != null && mounted && !_isDisposed) {
+        _lastCapturedImage = File(image.path);
+        Logger.image('Image selected from gallery: ${image.path}');
         // Navigate to loading screen with the selected image
         Navigator.push(
           context,
@@ -116,16 +180,16 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
             ),
           ),
         );
+      } else {
+        Logger.info('Gallery selection cancelled');
+        // Reinitialize camera if gallery was cancelled
+        await _initializeCamera();
       }
     } catch (e) {
-      print('Error picking image: $e');
+      Logger.error('Error picking image from gallery', error: e);
+      // Reinitialize camera on error
+      await _initializeCamera();
     }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
   }
 
   @override
@@ -139,7 +203,7 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
             child: Stack(
               children: [
                 // Camera preview
-                if (_isCameraInitialized)
+                if (_isCameraInitialized && _controller != null)
                   SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,

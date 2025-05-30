@@ -14,6 +14,9 @@ class LogHistoryScreen extends StatefulWidget {
 class _LogHistoryScreenState extends State<LogHistoryScreen> {
   int selectedView = 0; // 0: List, 1: Calendar
   DateTime selectedDate = DateTime.now();
+  bool _isDisposed = false;
+  final Map<String, ImageProvider> _imageCache = {};
+
   final List<Map<String, dynamic>> logs = [
     {
       'mealType': 'Breakfast',
@@ -48,6 +51,35 @@ class _LogHistoryScreenState extends State<LogHistoryScreen> {
       'time': '19:10 PM',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _preloadImages();
+  }
+
+  void _preloadImages() {
+    for (var log in logs) {
+      if (log['photo']) {
+        try {
+          _imageCache[log['image']] = AssetImage(log['image']);
+        } catch (e) {
+          print('Error preloading image ${log['image']}: $e');
+          // Use placeholder image if the asset fails to load
+          _imageCache[log['image']] = AssetImage('assets/placeholder_food.jpg');
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _imageCache.clear();
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+    super.dispose();
+  }
 
   void _changeMonth(int delta) {
     setState(() {
@@ -215,8 +247,14 @@ class _LogHistoryScreenState extends State<LogHistoryScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: AssetImage(log['image']),
+                          backgroundImage: _imageCache[log['image']] ?? AssetImage('assets/placeholder_food.jpg'),
                           radius: 24,
+                          onBackgroundImageError: (exception, stackTrace) {
+                            print('Error loading image: $exception');
+                          },
+                          child: _imageCache[log['image']] == null 
+                            ? const Icon(Icons.restaurant, color: Colors.grey)
+                            : null,
                         ),
                         title: Text(log['mealType'], style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(log['desc']),
