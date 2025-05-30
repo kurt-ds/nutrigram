@@ -11,6 +11,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      automaticallyImplyLeading: showBackButton,
       leading: showBackButton
           ? IconButton(
               icon: Icon(Icons.arrow_back, color: Colors.black),
