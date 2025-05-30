@@ -11,8 +11,9 @@ class Logger {
   static const String _magenta = '\x1B[35m';
 
   static void info(String message, {String? tag}) {
+    print('$_blue[INFO]${tag != null ? ' [$tag]' : ''} $message$_reset');
     developer.log(
-      '$_blue$message$_reset',
+      message,
       name: tag ?? 'INFO',
       time: DateTime.now(),
       error: null,
@@ -22,8 +23,9 @@ class Logger {
   }
 
   static void debug(String message, {String? tag}) {
+    print('$_cyan[DEBUG]${tag != null ? ' [$tag]' : ''} $message$_reset');
     developer.log(
-      '$_cyan$message$_reset',
+      message,
       name: tag ?? 'DEBUG',
       time: DateTime.now(),
       error: null,
@@ -33,8 +35,12 @@ class Logger {
   }
 
   static void warning(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+    print('$_yellow[WARNING]${tag != null ? ' [$tag]' : ''} $message$_reset');
+    if (error != null) {
+      print('$_yellow[ERROR] $error$_reset');
+    }
     developer.log(
-      '$_yellow$message$_reset',
+      message,
       name: tag ?? 'WARNING',
       time: DateTime.now(),
       error: error,
@@ -44,8 +50,12 @@ class Logger {
   }
 
   static void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+    print('$_red[ERROR]${tag != null ? ' [$tag]' : ''} $message$_reset');
+    if (error != null) {
+      print('$_red[ERROR] $error$_reset');
+    }
     developer.log(
-      '$_red$message$_reset',
+      message,
       name: tag ?? 'ERROR',
       time: DateTime.now(),
       error: error,
@@ -55,8 +65,12 @@ class Logger {
   }
 
   static void camera(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+    print('$_magenta[CAMERA]${tag != null ? ' [$tag]' : ''} $message$_reset');
+    if (error != null) {
+      print('$_magenta[ERROR] $error$_reset');
+    }
     developer.log(
-      '$_magenta$message$_reset',
+      message,
       name: tag ?? 'CAMERA',
       time: DateTime.now(),
       error: error,
@@ -66,8 +80,12 @@ class Logger {
   }
 
   static void image(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
+    print('$_green[IMAGE]${tag != null ? ' [$tag]' : ''} $message$_reset');
+    if (error != null) {
+      print('$_green[ERROR] $error$_reset');
+    }
     developer.log(
-      '$_green$message$_reset',
+      message,
       name: tag ?? 'IMAGE',
       time: DateTime.now(),
       error: error,

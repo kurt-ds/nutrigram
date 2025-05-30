@@ -165,6 +165,8 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            // Commented out recent meals implementation
+            /*
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: const [
@@ -172,6 +174,33 @@ class DashboardScreen extends StatelessWidget {
                 MealCard(title: "Grilled Chicken", kcal: 520, image: 'assets/chicken.png'),
                 MealCard(title: "Fruit Smoothie", kcal: 160, image: 'assets/smoothie.png'),
               ],
+            ),
+            */
+            // No recent meals message
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
+                children: [
+                  Icon(Icons.restaurant, size: 48, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No recent meals',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start by capturing your first meal',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
             // Macros Breakdown

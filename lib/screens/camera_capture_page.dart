@@ -107,6 +107,13 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
       _lastCapturedImage = File(image.path);
       Logger.image('Image captured: ${image.path}');
       
+      // Set state to prevent any further camera operations
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isCameraInitialized = false;
+        });
+      }
+      
       // Dispose camera before navigating
       await _disposeCamera();
       
@@ -123,6 +130,10 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
       }
     } catch (e) {
       Logger.error('Error capturing image', error: e);
+      // Reinitialize camera on error
+      if (mounted && !_isDisposed) {
+        await _initializeCamera();
+      }
     }
   }
 

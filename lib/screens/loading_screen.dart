@@ -29,7 +29,6 @@ class _LoadingScreenState extends State<LoadingScreen> {
   @override
   void initState() {
     super.initState();
-    Logger.info('Initializing LoadingScreen');
     _initializeImage();
     _analyzeImage();
   }
@@ -37,13 +36,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void _initializeImage() {
     if (widget.capturedImagePath.isNotEmpty) {
       _imageFile = File(widget.capturedImagePath);
-      Logger.image('Image initialized: ${widget.capturedImagePath}');
     }
   }
 
   @override
   void dispose() {
-    Logger.info('Disposing LoadingScreen');
     _isDisposed = true;
     // Clear image cache
     PaintingBinding.instance.imageCache.clear();
@@ -53,7 +50,6 @@ class _LoadingScreenState extends State<LoadingScreen> {
     if (_imageFile != null) {
       try {
         _imageFile!.deleteSync();
-        Logger.image('Deleted image file: ${_imageFile!.path}');
       } catch (e) {
         Logger.error('Error deleting image file', error: e);
       }
@@ -63,45 +59,37 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   Future<void> _analyzeImage() async {
-    if (_isDisposed) return;
-
     try {
-      Logger.info('Starting image analysis');
-      final result = await _geminiService.analyzeFoodImage(widget.capturedImagePath);
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _analysisResult = result;
-        });
-        Logger.info('Image analysis completed');
-        
-        // Get nutritional information from Nutritionix
-        try {
-          Logger.info('Fetching nutritional information');
-          final nutritionalInfo = await _nutritionixService.analyzeFoodDescription(result);
-          Logger.info('Nutritional information received');
-        } catch (e) {
-          Logger.error('Error getting nutritional information', error: e);
-        }
+      Logger.debug('Image path: ${widget.capturedImagePath}');
+      
+      final geminiService = GeminiService();
+      final nutritionixService = NutritionixService();
 
-        Logger.info('Navigating to ResultScreen');
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => ResultScreen(
-              capturedImagePath: widget.capturedImagePath,
-              analysisResult: result,
-            ),
+      // Analyze image with Gemini
+      final response = await geminiService.analyzeFoodImage(widget.capturedImagePath);
+
+      // Get nutritional information from Nutritionix
+      final nutritionData = await nutritionixService.analyzeFoodDescription(response);
+
+      if (!mounted) return;
+
+      // Navigate to result screen with the data
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ResultScreen(
+            capturedImagePath: widget.capturedImagePath,
+            analysisResult: response,
+            nutritionalInfo: nutritionData,
           ),
-        );
-      }
+        ),
+      );
     } catch (e) {
-      Logger.error('Error in _analyzeImage', error: e);
-      if (mounted && !_isDisposed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error analyzing image. Please try again.'),
-          ),
-        );
-      }
+      Logger.error('Error in image analysis', error: e);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error analyzing image: $e')),
+      );
     }
   }
 
