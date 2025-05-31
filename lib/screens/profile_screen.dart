@@ -2,10 +2,54 @@ import 'package:flutter/material.dart';
 import '../components/custom_app_bar.dart';
 import '../components/custom_bottom_nav.dart';
 import '../screens/log_history_screen.dart';
+import '../services/storage_service.dart';
+import '../utils/logger.dart';
 
 class ProfileScreen extends StatelessWidget {
   final VoidCallback? onBackToHome;
   const ProfileScreen({super.key, this.onBackToHome});
+
+  Future<void> _clearData(BuildContext context) async {
+    try {
+      final storageService = StorageService();
+      
+      // Show confirmation dialog
+      final shouldClear = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Clear All Data'),
+          content: const Text('This will delete all saved meals and images. This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear Data'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldClear == true) {
+        await storageService.clearAllData();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('All data cleared successfully')),
+          );
+        }
+      }
+    } catch (e) {
+      Logger.error('Error clearing data', error: e);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error clearing data: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +208,20 @@ class ProfileScreen extends StatelessWidget {
                 icon: const Icon(Icons.logout, color: Colors.white),
                 label: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 onPressed: () {},
+              ),
+            ),
+            // Clear Data Button
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 40),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[400],
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                icon: const Icon(Icons.delete_forever, color: Colors.white),
+                label: const Text('Clear All Data', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => _clearData(context),
               ),
             ),
           ],

@@ -12,34 +12,25 @@ class StorageService {
 
   Future<String> saveImage(String sourcePath) async {
     try {
-      // Check if source file exists
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/meal_images');
+      
+      if (!imagesDir.existsSync()) {
+        imagesDir.createSync(recursive: true);
+      }
+
       final sourceFile = File(sourcePath);
-      if (!await sourceFile.exists()) {
-        throw Exception('Source image file does not exist at path: $sourcePath');
+      if (!sourceFile.existsSync()) {
+        throw Exception('Source image file does not exist');
       }
 
-      // Get the application documents directory
-      final directory = await getApplicationDocumentsDirectory();
-      final imagesDir = Directory('${directory.path}/meal_images');
-      
-      // Create the images directory if it doesn't exist
-      if (!await imagesDir.exists()) {
-        await imagesDir.create(recursive: true);
-      }
-
-      // Generate a unique filename
       final fileName = '${_uuid.v4()}.jpg';
-      final destinationPath = '${imagesDir.path}/$fileName';
-      
-      // Copy the file
-      try {
-        await sourceFile.copy(destinationPath);
-        Logger.info('Image saved successfully to: $destinationPath');
-        return destinationPath;
-      } catch (e) {
-        Logger.error('Error copying image file', error: e);
-        throw Exception('Failed to copy image file: $e');
-      }
+      final targetPath = '${imagesDir.path}/$fileName';
+      final targetFile = File(targetPath);
+
+      await sourceFile.copy(targetPath);
+      Logger.info('Image saved successfully to: $targetPath');
+      return targetPath;
     } catch (e) {
       Logger.error('Error saving image', error: e);
       rethrow;
@@ -48,18 +39,13 @@ class StorageService {
 
   Future<void> saveMeal(Meal meal) async {
     try {
-      // Verify the image exists before saving the meal
-      final imageFile = File(meal.imagePath);
-      if (!await imageFile.exists()) {
-        throw Exception('Saved image file does not exist at path: ${meal.imagePath}');
-      }
-
       final prefs = await SharedPreferences.getInstance();
       final mealsJson = prefs.getStringList(_mealsKey) ?? [];
       
+      // Add new meal
       mealsJson.add(jsonEncode(meal.toJson()));
-      await prefs.setStringList(_mealsKey, mealsJson);
       
+      await prefs.setStringList(_mealsKey, mealsJson);
       Logger.info('Meal saved successfully');
     } catch (e) {
       Logger.error('Error saving meal', error: e);
@@ -67,14 +53,16 @@ class StorageService {
     }
   }
 
-  Future<List<Meal>> loadMeals() async {
+  Future<List<Meal>> getAllMeals() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final mealsJson = prefs.getStringList(_mealsKey) ?? [];
       
-      return mealsJson.map((json) => Meal.fromJson(jsonDecode(json))).toList();
+      return mealsJson
+          .map((json) => Meal.fromJson(jsonDecode(json)))
+          .toList();
     } catch (e) {
-      Logger.error('Error loading meals', error: e);
+      Logger.error('Error getting all meals', error: e);
       return [];
     }
   }
@@ -84,30 +72,40 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       final mealsJson = prefs.getStringList(_mealsKey) ?? [];
       
-      // Find the meal to delete
-      Meal? mealToDelete;
+      // Find and remove the meal
       final updatedMeals = mealsJson.where((json) {
         final meal = Meal.fromJson(jsonDecode(json));
-        if (meal.id == mealId) {
-          mealToDelete = meal;
-          return false;
-        }
-        return true;
+        return meal.id != mealId;
       }).toList();
-      
-      // Delete the meal's image file if it exists
-      if (mealToDelete != null) {
-        final imageFile = File(mealToDelete!.imagePath);
-        if (await imageFile.exists()) {
-          await imageFile.delete();
-          Logger.info('Deleted meal image: ${mealToDelete!.imagePath}');
-        }
-      }
       
       await prefs.setStringList(_mealsKey, updatedMeals);
       Logger.info('Meal deleted successfully');
     } catch (e) {
       Logger.error('Error deleting meal', error: e);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteImage(String imagePath) async {
+    try {
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        await file.delete();
+        Logger.info('Image deleted successfully: $imagePath');
+      }
+    } catch (e) {
+      Logger.error('Error deleting image', error: e);
+      rethrow;
+    }
+  }
+
+  Future<void> clearAllData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_mealsKey);
+      Logger.info('Cleared all saved meals');
+    } catch (e) {
+      Logger.error('Error clearing data', error: e);
       rethrow;
     }
   }

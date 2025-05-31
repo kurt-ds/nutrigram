@@ -3,6 +3,7 @@ import 'dart:io';
 import '../components/custom_app_bar.dart';
 import '../utils/logger.dart';
 import '../services/storage_service.dart';
+import '../services/nutrition_service.dart';
 import '../models/meal.dart';
 import 'package:uuid/uuid.dart';
 
@@ -24,6 +25,7 @@ class ResultScreen extends StatefulWidget {
 
 class _ResultScreenState extends State<ResultScreen> {
   final StorageService _storageService = StorageService();
+  final NutritionService _nutritionService = NutritionService();
   final _uuid = const Uuid();
   bool _isSaving = false;
   ImageProvider? _imageProvider;
@@ -200,7 +202,7 @@ class _ResultScreenState extends State<ResultScreen> {
         unit: food['unit'],
       )).toList();
 
-      // Create and save the meal
+      // Create the meal
       final meal = Meal(
         id: _uuid.v4(),
         imagePath: _savedImagePath!,
@@ -213,7 +215,8 @@ class _ResultScreenState extends State<ResultScreen> {
         totalFat: totalFat,
       );
 
-      await _storageService.saveMeal(meal);
+      // Save the meal using NutritionService
+      await _nutritionService.addRecentMeal(meal);
       
       if (!mounted) return;
       
