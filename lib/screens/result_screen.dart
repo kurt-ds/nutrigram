@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../components/custom_app_bar.dart';
 import '../utils/logger.dart';
+import '../services/storage_service.dart';
+import '../models/meal.dart';
+import 'package:uuid/uuid.dart';
 
 class ResultScreen extends StatefulWidget {
   final String capturedImagePath;
@@ -20,15 +23,20 @@ class ResultScreen extends StatefulWidget {
 }
 
 class _ResultScreenState extends State<ResultScreen> {
+  final StorageService _storageService = StorageService();
+  final _uuid = const Uuid();
+  bool _isSaving = false;
   ImageProvider? _imageProvider;
   bool _isDisposed = false;
   File? _imageFile;
   List<Map<String, dynamic>> foods = [];
+  String? _savedImagePath;
+  bool _isImageSaved = false;
 
-  double get totalKcal => foods.fold(0, (sum, item) => sum + (item['calories'] * item['servings']));
-  double get totalProtein => foods.fold(0, (sum, item) => sum + (item['protein'] * item['servings']));
-  double get totalCarbs => foods.fold(0, (sum, item) => sum + (item['carbs'] * item['servings']));
-  double get totalFat => foods.fold(0, (sum, item) => sum + (item['fat'] * item['servings']));
+  double get totalKcal => foods.fold(0, (sum, item) => sum + (item['calories']));
+  double get totalProtein => foods.fold(0, (sum, item) => sum + (item['protein']));
+  double get totalCarbs => foods.fold(0, (sum, item) => sum + (item['carbs']));
+  double get totalFat => foods.fold(0, (sum, item) => sum + (item['fat']));
 
   @override
   void initState() {
@@ -41,9 +49,53 @@ class _ResultScreenState extends State<ResultScreen> {
 
   void _initializeImage() {
     if (widget.capturedImagePath.isNotEmpty) {
-      _imageFile = File(widget.capturedImagePath);
-      _imageProvider = FileImage(_imageFile!);
-      Logger.image('Image initialized: ${widget.capturedImagePath}');
+      try {
+        Logger.info('Initializing image from path: ${widget.capturedImagePath}');
+        
+        // Check if the path is a direct file path
+        _imageFile = File(widget.capturedImagePath);
+        if (_imageFile!.existsSync()) {
+          _imageProvider = FileImage(_imageFile!);
+          Logger.info('Image file exists and initialized successfully');
+          Logger.info('Image file size: ${_imageFile!.lengthSync()} bytes');
+          return;
+        }
+
+        // If not found, try to find it in the temp_images directory
+        final tempDir = Directory('/data/user/0/com.example.nutrigram/app_flutter/temp_images');
+        if (tempDir.existsSync()) {
+          Logger.info('Searching in temp directory: ${tempDir.path}');
+          final tempFiles = tempDir.listSync();
+          Logger.info('Found ${tempFiles.length} files in temp directory');
+          
+          // Try to find the most recent image file
+          File? mostRecentFile;
+          DateTime? mostRecentTime;
+          
+          for (var file in tempFiles) {
+            if (file is File && file.path.endsWith('.jpg')) {
+              final stat = file.statSync();
+              if (mostRecentTime == null || stat.modified.isAfter(mostRecentTime)) {
+                mostRecentFile = file;
+                mostRecentTime = stat.modified;
+              }
+            }
+          }
+          
+          if (mostRecentFile != null) {
+            _imageFile = mostRecentFile;
+            _imageProvider = FileImage(_imageFile!);
+            Logger.info('Found and using most recent image: ${_imageFile!.path}');
+            return;
+          }
+        }
+
+        Logger.error('Could not find image file at path: ${widget.capturedImagePath}');
+      } catch (e) {
+        Logger.error('Error initializing image', error: e);
+      }
+    } else {
+      Logger.error('No image path provided');
     }
   }
 
@@ -90,33 +142,100 @@ class _ResultScreenState extends State<ResultScreen> {
   void dispose() {
     Logger.info('Disposing ResultScreen');
     _isDisposed = true;
+    
     // Clear image cache
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
     
-    // Clean up the image file if it exists
-    if (_imageFile != null) {
+    // Only delete the temporary image if it hasn't been saved
+    if (_imageFile != null && !_isImageSaved) {
       try {
-        _imageFile!.deleteSync();
-        Logger.image('Deleted image file: ${_imageFile!.path}');
+        if (_imageFile!.existsSync()) {
+          _imageFile!.deleteSync();
+          Logger.image('Deleted temporary image file: ${_imageFile!.path}');
+        }
       } catch (e) {
-        Logger.error('Error deleting image file', error: e);
+        Logger.error('Error deleting temporary image file', error: e);
       }
     }
     
     super.dispose();
   }
 
-  void _saveMeal() {
-    Logger.info('Saving meal with analysis results:');
-    Logger.info('Description: ${widget.analysisResult}');
-    if (widget.nutritionalInfo != null) {
-      Logger.info('Nutritional data: ${widget.nutritionalInfo}');
+  Future<void> _saveMeal() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      // Verify image file exists and log its details
+      if (_imageFile == null) {
+        throw Exception('No image file available');
+      }
+
+      Logger.info('Checking image file before save:');
+      Logger.info('Image path: ${_imageFile!.path}');
+      Logger.info('File exists: ${_imageFile!.existsSync()}');
+      
+      if (!_imageFile!.existsSync()) {
+        throw Exception('Image file does not exist');
+      }
+
+      if (_imageFile!.existsSync()) {
+        Logger.info('File size: ${_imageFile!.lengthSync()} bytes');
+      }
+
+      // Save the image first
+      _savedImagePath = await _storageService.saveImage(_imageFile!.path);
+      Logger.info('Image saved successfully to: $_savedImagePath');
+      _isImageSaved = true;
+
+      // Create food items from the foods list
+      final foodItems = foods.map((food) => FoodItem(
+        name: food['name'],
+        calories: food['calories'],
+        protein: food['protein'],
+        carbs: food['carbs'],
+        fat: food['fat'],
+        servings: food['servings'],
+        unit: food['unit'],
+      )).toList();
+
+      // Create and save the meal
+      final meal = Meal(
+        id: _uuid.v4(),
+        imagePath: _savedImagePath!,
+        description: widget.analysisResult,
+        timestamp: DateTime.now(),
+        foods: foodItems,
+        totalCalories: totalKcal,
+        totalProtein: totalProtein,
+        totalCarbs: totalCarbs,
+        totalFat: totalFat,
+      );
+
+      await _storageService.saveMeal(meal);
+      
+      if (!mounted) return;
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meal saved successfully')),
+      );
+
+      // Navigate back to home page
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } catch (e) {
+      Logger.error('Error saving meal', error: e);
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving meal: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
-    // TODO: Implement save functionality
-    
-    // Navigate back to main page
-    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -305,7 +424,7 @@ class _ResultScreenState extends State<ResultScreen> {
                                   ),
                                   Row(
                                     children: [
-                                      Text('${(food['calories'] * food['servings']).toStringAsFixed(0)} kcal', 
+                                      Text('${food['calories']} kcal', 
                                         style: const TextStyle(fontWeight: FontWeight.w500)),
                                     ],
                                   ),
@@ -338,20 +457,38 @@ class _ResultScreenState extends State<ResultScreen> {
                           ],
                         ),
                         const Divider(height: 24),
-                        Row(
-                          children: [
-                            Expanded(child: _macroItem('Calories', '${totalKcal.toStringAsFixed(0)} kcal')),
-                            const SizedBox(width: 16),
-                            Expanded(child: _macroItem('Protein', '${totalProtein.toStringAsFixed(1)} g')),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(child: _macroItem('Carbs', '${totalCarbs.toStringAsFixed(1)} g')),
-                            const SizedBox(width: 16),
-                            Expanded(child: _macroItem('Fat', '${totalFat.toStringAsFixed(1)} g')),
-                          ],
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: _macroItem('Calories', '${totalKcal.toStringAsFixed(0)} kcal'),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _macroItem('Protein', '${totalProtein.toStringAsFixed(1)} g'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: _macroItem('Carbs', '${totalCarbs.toStringAsFixed(1)} g'),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _macroItem('Fat', '${totalFat.toStringAsFixed(1)} g'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         const Center(
@@ -366,18 +503,46 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
                 const SizedBox(height: 24),
                 // Action Buttons
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[300],
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        icon: const Icon(Icons.close, color: Colors.black87),
+                        label: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
+                        onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                      ),
                     ),
-                    icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-                    label: const Text('Save Meal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                    onPressed: _saveMeal,
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        icon: _isSaving 
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.check_circle_outline, color: Colors.white),
+                        label: Text(
+                          _isSaving ? 'Saving...' : 'Save Meal',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                        ),
+                        onPressed: _isSaving ? null : _saveMeal,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],

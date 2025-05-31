@@ -55,8 +55,10 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
     // Clean up any captured images
     if (_lastCapturedImage != null) {
       try {
-        _lastCapturedImage!.deleteSync();
-        Logger.image('Deleted captured image: ${_lastCapturedImage!.path}');
+        if (_lastCapturedImage!.existsSync()) {
+          _lastCapturedImage!.deleteSync();
+          Logger.image('Deleted captured image: ${_lastCapturedImage!.path}');
+        }
       } catch (e) {
         Logger.error('Error deleting captured image', error: e);
       }
@@ -104,6 +106,8 @@ class _CameraCapturePageState extends State<CameraCapturePage> {
       Logger.camera('Capturing image');
       // Capture the image
       final XFile image = await _controller!.takePicture();
+      
+      // Store the captured image path
       _lastCapturedImage = File(image.path);
       Logger.image('Image captured: ${image.path}');
       

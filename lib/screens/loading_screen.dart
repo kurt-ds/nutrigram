@@ -6,6 +6,7 @@ import '../utils/logger.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
 
 class LoadingScreen extends StatefulWidget {
   final String capturedImagePath;
@@ -25,6 +26,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   String _analysisResult = '';
   bool _isDisposed = false;
   File? _imageFile;
+  String? _savedImagePath;
 
   @override
   void initState() {
@@ -35,7 +37,43 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
   void _initializeImage() {
     if (widget.capturedImagePath.isNotEmpty) {
-      _imageFile = File(widget.capturedImagePath);
+      try {
+        Logger.info('Initializing image from path: ${widget.capturedImagePath}');
+        _imageFile = File(widget.capturedImagePath);
+        
+        if (_imageFile!.existsSync()) {
+          Logger.info('Image file exists and initialized successfully');
+          Logger.info('Image file size: ${_imageFile!.lengthSync()} bytes');
+          
+          // Save a copy of the image to ensure it persists
+          _saveImageCopy();
+        } else {
+          Logger.error('Image file does not exist at path: ${widget.capturedImagePath}');
+        }
+      } catch (e) {
+        Logger.error('Error initializing image', error: e);
+      }
+    } else {
+      Logger.error('No image path provided');
+    }
+  }
+
+  Future<void> _saveImageCopy() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${directory.path}/temp_images');
+      
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      _savedImagePath = '${imagesDir.path}/$fileName';
+      
+      await _imageFile!.copy(_savedImagePath!);
+      Logger.info('Saved image copy to: $_savedImagePath');
+    } catch (e) {
+      Logger.error('Error saving image copy', error: e);
     }
   }
 
@@ -46,14 +84,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
     
-    // Clean up the image file if it exists
-    if (_imageFile != null) {
-      try {
-        _imageFile!.deleteSync();
-      } catch (e) {
-        Logger.error('Error deleting image file', error: e);
-      }
-    }
+    // Note: We don't delete the temporary image here anymore
+    // as it needs to persist for the ResultScreen
     
     super.dispose();
   }
@@ -78,7 +110,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => ResultScreen(
-            capturedImagePath: widget.capturedImagePath,
+            capturedImagePath: _savedImagePath ?? widget.capturedImagePath,
             analysisResult: response,
             nutritionalInfo: nutritionData,
           ),
