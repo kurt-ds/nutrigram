@@ -419,7 +419,10 @@ class _ResultScreenState extends State<ResultScreen> {
                                               ),
                                             ),
                                             const SizedBox(width: 4),
-                                            Text(food['unit'], style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                                            Text(
+                                              food['unit'].toString().length > 6 ? '' : food['unit'],
+                                              style: const TextStyle(fontSize: 13, color: Colors.grey)
+                                            ),
                                           ],
                                         ),
                                       ],

@@ -4,11 +4,17 @@ import '../components/custom_bottom_nav.dart';
 import '../screens/log_history_screen.dart';
 import '../services/storage_service.dart';
 import '../utils/logger.dart';
+import '../main.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
   const ProfileScreen({super.key, this.onBackToHome});
 
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _clearData(BuildContext context) async {
     try {
       final storageService = StorageService();
@@ -39,6 +45,17 @@ class ProfileScreen extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('All data cleared successfully')),
           );
+          // Navigate back to home screen and force reload
+          if (context.mounted) {
+            // Pop all routes until we reach the home screen
+            Navigator.of(context).popUntil((route) => route.isFirst);
+            // Force rebuild of the current route
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => const HomePage(),
+              ),
+            );
+          }
         }
       }
     } catch (e) {

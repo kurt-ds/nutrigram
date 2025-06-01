@@ -76,7 +76,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
   final NutritionService _nutritionService = NutritionService();
   Map<String, dynamic> _dailyNutrition = {
     'calories': 0,
@@ -88,12 +88,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
 
   @override
+  bool get wantKeepAlive => false;
+
+  @override
   void initState() {
     super.initState();
     _loadData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadData();
+  }
+
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final nutrition = await _nutritionService.getDailyNutrition();
