@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/meal.dart';
 import '../utils/logger.dart';
+import 'package:flutter/rendering.dart';
 
 class StorageService {
   static const String _mealsKey = 'saved_meals';
@@ -101,9 +102,27 @@ class StorageService {
 
   Future<void> clearAllData() async {
     try {
+      // Clear meals from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_mealsKey);
-      Logger.info('Cleared all saved meals');
+      
+      // Clear daily nutrition data
+      await prefs.remove('daily_nutrition');
+      
+      // Clear all images from the meal_images directory
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory('${appDir.path}/meal_images');
+      
+      if (imagesDir.existsSync()) {
+        await imagesDir.delete(recursive: true);
+        Logger.info('Cleared all saved images');
+      }
+      
+      // Clear image cache
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      
+      Logger.info('Cleared all saved meals, nutrition data, and images');
     } catch (e) {
       Logger.error('Error clearing data', error: e);
       rethrow;
